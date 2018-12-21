@@ -3,61 +3,24 @@
 *@NScriptType Suitelet
 */
 
-define(['N/ui/serverWidget', 'N/url', 'N/search'],
-	function(ui, url, search){
+define(['N/ui/serverWidget', 'N/search', 'N/log', 'N/task'],
+	function(ui, search, log, task){
 		function formCreate(context) {
-			if(context.request.method === 'GET') {
-				//**filter
-				var customFilter = search.create({
-				type: search.Type.INVOICE,
-				title: 'Current Invoice',
-				filters: [
-					{
-						name: 'mainline',
-						operator: 'is',
-						values: ['T']
-					},
-					{
-						name: 'status',
-						operator: 'anyof',
-						values: ['CustInvc:A']
-					}
-				],
-				columns: [
-					{
-						name: 'entity'
-					},
-					{
-						name: 'trandate'
-					},
-					{
-						name: 'externalid'
-					},
-					{
-						name: 'otherrefnum'
-					},
-					{
-						name: 'status'
-					},
-					{
-						name: 'tranid'
-					}
-				]
-			});
+			if(context.request.method == 'GET') {
 				//**create form
 				var form = ui.createForm({
 					title: 'Record Form'
 				});
-				//var client = form.clientScriptFileId = 9498;
 				form.addSubmitButton({
 					label: 'Submit'
 				});
 				form.addResetButton({
-					label: 'Reset'
+					label: 'Reset'	
 				});
 				form.addButton({
 					id: 'custpage_filter',
-					label: 'Filter'
+					label: 'Filter',
+					functionName: 'resolveURL'
 				});
 
 				var fieldgroup = form.addFieldGroup({
@@ -104,6 +67,8 @@ define(['N/ui/serverWidget', 'N/url', 'N/search'],
 				enddate.updateBreakType({
 					breakType: ui.FieldBreakType.STARTCOL
 				});
+				//***********************
+				form.clientScriptFileId = 9498;
 				//**add sublist
 				var formsublist = form.addSublist({
 					id: 'custpage_sublist',
@@ -143,7 +108,7 @@ define(['N/ui/serverWidget', 'N/url', 'N/search'],
 				});
 				formsublist.addField({
 					id: 'custpage_sublist_purchase',
-					type: ui.FieldType.FLOAT,
+					type: ui.FieldType.TEXT,
 					label: 'Purchase #'
 				});
 				formsublist.addField({
@@ -161,83 +126,188 @@ define(['N/ui/serverWidget', 'N/url', 'N/search'],
 					type: ui.FieldType.TEXT,
 					label: 'End Date'
 				});
-				//set sublist val
-				var counter = 0;
-				customFilter.run().each(function(result) {
-					var entity = result.getValue(
-						{
-							name: 'entity'
-						});
-					var trandate = result.getValue(	
-						{
-							name: 'trandate'
-						});
-					var externalid = result.getValue(	
-						{
-							name: 'externalid'
-						});
-					var otherrefnum = result.getValue(
-						{
-							name: 'otherrefnum'
-						});
-					var status = result.getValue(
-						{
-							name: 'status'
-						});
-					var tranid = result.getValue(
-						{
-							name: 'tranid'
-						});
 
-					formsublist.setSublistValue({
-						id: 'custpage_sublist_id',
-						line: counter,
-						value: 'F'
+				//**filter
+				var filters = [
+						{
+							name: 'mainline',
+							operator: search.Operator.IS,
+							values: ['T']
+						},
+						{
+							name: 'status',
+							operator: search.Operator.ANYOF,
+							values: ['CustInvc:A']
+						}
+					];
+					if(context.request.parameters.customer != undefined){
+						filters.push(
+							{
+								name: 'entity',
+								operator: search.Operator.IS,
+								values: [context.request.parameters.customer]
+							}
+						);
+					}
+					if(context.request.parameters.startdate != undefined){
+						filters.push(
+							{
+								name: 'startdate',
+								operator: search.Operator.ONORAFTER,
+								values: [context.request.parameters.startdate]
+							}
+						);
+					}
+					if(context.request.parameters.enddate != undefined){
+						filters.push(
+							{
+								name: 'enddate',
+								operator: search.Operator.ONORBEFORE,
+								values: [context.request.parameters.enddate]
+							}
+						);
+					}
+				
+					var customFilter = search.create({
+						type: search.Type.INVOICE,
+						title: 'Current Invoice',
+						columns: [
+							{
+								name: 'entity'
+							},
+							{
+								name: 'trandate'
+							},
+							{
+								name: 'externalid'
+							},
+							{
+								name: 'otherrefnum'
+							},
+							{
+								name: 'status'
+							},
+							{
+								name: 'tranid'
+							}
+						],
+						filters:filters
 					});
-					formsublist.setSublistValue({
-						id: 'custpage_sublist_idnumber',
-						line: counter,
-						value: tranid
+
+
+					//set sublist val
+					var counter = 0;
+					customFilter.run().each(function(result) {
+						var entity = result.getValue(
+							{
+								name: 'entity'
+							});
+						var trandate = result.getValue(
+							{
+								name: 'trandate'
+							});
+						var externalid = result.getValue(
+							{
+								name: 'externalid'
+							});
+						var otherrefnum = result.getValue(
+							{
+								name: 'otherrefnum'
+							});
+						var status = result.getValue(
+							{
+								name: 'status'
+							});
+						var tranid = result.getValue(
+							{
+								name: 'tranid'
+							});
+
+						formsublist.setSublistValue({
+							id: 'custpage_sublist_id',
+							line: counter,
+							value: 'F'
+						});
+						formsublist.setSublistValue({
+							id: 'custpage_sublist_idnumber',
+							line: counter,
+							value: result.id
+						});
+						formsublist.setSublistValue({
+							id: 'custpage_sublist_document',
+							line: counter,
+							value: tranid
+						});
+						formsublist.setSublistValue({
+							id: 'custpage_sublist_date',
+							line: counter,
+							value: trandate
+						});
+						formsublist.setSublistValue({
+							id: 'custpage_sublist_customer',
+							line: counter,
+							value: entity
+						});
+						formsublist.setSublistValue({
+							id: 'custpage_sublist_purchase',
+							line: counter,
+							value: 'otherrefnum'
+						});
+						formsublist.setSublistValue({
+							id: 'custpage_sublist_status',
+							line: counter,
+							value: 'externalid'
+						});
+						formsublist.setSublistValue({
+							id: 'custpage_sublist_startdate',
+							line: counter,
+							value: trandate
+						});
+						formsublist.setSublistValue({
+							id: 'custpage_sublist_enddate',
+							line: counter,
+							value: trandate
+						});
+						counter++;
+						return true;
 					});
-					formsublist.setSublistValue({
-						id: 'custpage_sublist_document',
-						line: counter,
-						value: tranid
+
+					log.debug({
+						title: 'check',
+						details: customFilter
 					});
-					formsublist.setSublistValue({
-						id: 'custpage_sublist_date',
-						line: counter,
-						value: trandate
-					});
-					formsublist.setSublistValue({
-						id: 'custpage_sublist_customer',
-						line: counter,
-						value: entity
-					});
-					formsublist.setSublistValue({
-						id: 'custpage_sublist_purchase',
-						line: counter,
-						value: otherrefnum
-					});
-					formsublist.setSublistValue({
-						id: 'custpage_sublist_status',
-						line: counter,
-						value: 'externalid'
-					});
-					formsublist.setSublistValue({
-						id: 'custpage_sublist_startdate',
-						line: counter,
-						value: trandate
-					});
-					formsublist.setSublistValue({
-						id: 'custpage_sublist_enddate',
-						line: counter,
-						value: trandate
-					});
-					counter++;
-					return true;
-				});
+
 				context.response.writePage(form);
+			}
+			else if(context.request.method == 'POST'){
+				var lineCount = context.request.getLineCount({
+					group: 'custpage_sublist'
+				});
+				var invoiceids = [];
+				for(var i = 0; i<lineCount; i++) {
+					var checked = context.request.getSublistValue({
+						group: 'custpage_sublist',
+						name: 'custpage_sublist_id',
+						line: i
+					});
+					if(checked === 'T') {
+						var internalid = context.request.getSublistValue({
+							group: 'custpage_sublist',
+							name: 'custpage_sublist_idnumber',
+							line: i
+						});
+						invoiceids.push(internalid);
+					}
+				}
+				var scheduledTask = task.create({//create task script for scheduled
+	 				taskType: task.TaskType.SCHEDULED_SCRIPT,
+	 				scriptId: 'customscript_scheduledtask_elmer',
+	 				deploymentId: 'customdeploy_scheduledtask_elmer',
+	 				params: {
+	 					custscript_invoiceids_elmer: invoiceids
+	 				}
+	 			});
+	 			scheduledTask.submit();
 			}
 		}
 		return {

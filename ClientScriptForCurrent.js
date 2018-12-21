@@ -3,72 +3,45 @@
 *@NScriptType ClientScript
 */
 
-define(['N/currentRecord', 'N/search'],
-	function(currentrecord, search) {
+define(['N/currentRecord', 'N/format'],
+	function(currentRecord, format) {
+  		function pageInit() {
+          
+        }
 		function resolveURL(context) {
-			var record = currentrecord.CurrentRecord;
-
-			var customFilter = search.create({
-				type: search.Type.INVOICE,
-				title: 'Current Invoice',
-				id: 'custpage_search_filter',
-				filters: [
-					{
-						name: 'mainline',
-						operator: 'is',
-						values: ['T']
-					},
-					{
-						name: 'status',
-						operator: 'anyof',
-						values: ['CustInvc:A']
-					}
-				],
-				columns: [
-					{
-						name: 'entity'
-					},
-					{
-						name: 'trandate'
-					},
-					{
-						name: 'externalid'
-					},
-					{
-						name: 'message'
-					},
-					{
-						name: 'otherrefnum'
-					},
-					{
-						name: 'status'
-					},
-					{
-						name: 'tranid'
-					}
-				]
-			});
+			var record = currentRecord.get();
 
 			var customer = record.getValue({
-				id: 'custpage_employee'
+				fieldId: 'custpage_employee'
 			});
 
 			var startdate = record.getValue({
-				id: 'custpage_startdate'
+				fieldId: 'custpage_startdate'
 			});
+
+			var parsedstartdate = '';
+			if(startdate != undefined) {	
+					parsedstartdate = format.format({
+					value: startdate,
+					type: format.Type.DATE
+				});
+			}
 
 			var enddate = record.getValue({
-				id: 'custpage_enddate'
+				fieldId: 'custpage_enddate'
 			});
 
-			var output = url.resolveScript({
-				scriptId: 'customscript_customerform_elmer',
-				deploymentId: 'customdeploy_customerform_elmer',
-				returnExternalUrl: true
-			});
-			return output + '&customer=' + customer + '&startdate=' + startdate + '&enddate=' + enddate;
+			var parsedenddate = '';
+			if(enddate != undefined) {
+					parsedenddate = format.format({
+					value: enddate,
+					type: format.Type.DATE
+				});
+			}
+				window.location.href += '&customer=' + customer + '&startdate=' + parsedstartdate + '&enddate=' + parsedenddate;
 		}
 		return {
-			validateField: resolveURL
+          	pageInit: pageInit,
+			resolveURL: resolveURL
 		};
 	});
